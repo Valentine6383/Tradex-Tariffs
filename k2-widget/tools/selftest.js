@@ -1,0 +1,34 @@
+// Автотест: запускает виджет против фейкового принтера, жмёт кнопки, делает скриншоты
+const { app, BrowserWindow } = require('electron');
+const fs = require('fs'), path = require('path');
+const out = process.env.SHOTS || '/tmp';
+const ud = fs.mkdtempSync('/tmp/k2ud-');
+app.setPath('userData', ud);
+fs.writeFileSync(path.join(ud, 'config.json'), JSON.stringify({ ip: '127.0.0.1', autostart: false, alwaysShow: true }));
+require('../src/main.js');
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+app.whenReady().then(async () => {
+  await wait(2500);
+  const w = BrowserWindow.getAllWindows()[0];
+  const js = (c) => w.webContents.executeJavaScript(c);
+  const shot = async (n) => fs.writeFileSync(path.join(out, n), (await w.webContents.capturePage()).toPNG());
+  console.log('visible', w.isVisible(), w.getBounds());
+  await shot('1-compact.png');
+  await js(`document.getElementById('btnExpand').click()`); await wait(800);
+  console.log('expanded', w.getBounds());
+  await shot('2-expanded.png');
+  await js(`document.querySelector('[data-speed="130"]').click()`); await wait(600);
+  await js(`(()=>{const r=document.querySelector('#fans input');r.value=60;r.dispatchEvent(new Event('change'))})()`); await wait(600);
+  await js(`document.getElementById('btnPause').click()`); await wait(800);
+  await shot('3-paused.png');
+  await w.webContents.executeJavaScript(`window.k2.cmd({type:'gcodeText',value:${JSON.stringify(fs.readFileSync(path.join(__dirname,'sample.gcode'),'utf8'))}})`);
+  await js(`document.querySelector('[data-tab="objects"]').click()`); await wait(600);
+  await js(`document.querySelector('.obj button').click()`); await wait(300);
+  await js(`document.getElementById('cYes').click()`); await wait(800);
+  await shot('4-objects.png');
+  await js(`document.querySelector('[data-tab="settings"]').click()`); await wait(400);
+  await shot('5-settings.png');
+  const errs = await js(`document.getElementById('sub').textContent + ' | ' + document.getElementById('sFil').textContent`);
+  console.log('ui:', errs);
+  app.exit(0);
+});
