@@ -1,6 +1,9 @@
-"""Подставка-органайзер для одноразовых стаканчиков (как на фото с маркетплейса).
-Круглое основание-тарелка с рифлёным краем + проволочные петли-«шпильки»,
-верх которых отогнут наружу. Генерирует STL. Все размеры в мм."""
+"""Подставка-органайзер для одноразовых стаканчиков — копия с фото маркетплейса.
+Основание-тарелка с рифлёным краем и бортиком + две проволочные петли-«ушка»
+друг напротив друга. Каждая петля лежит в радиальной плоскости: внутренняя
+стойка вертикальная (вдоль стопки стаканов), наружная расходится наружу,
+сверху они соединены скруглением. Пропорции сняты с фото и отмасштабированы
+под проход CUP_RIM_D. Генерирует STL. Все размеры в мм."""
 import math
 import numpy as np
 import trimesh
@@ -8,21 +11,22 @@ from manifold3d import Manifold, OpType, set_circular_segments
 
 set_circular_segments(48)
 
-CUP_RIM_D    = 82    # проход между стойками (ободок стакана + зазор); 250 мл ≈ 80 мм
-WIRE_D       = 5.5   # толщина «проволоки»
-N_LOOPS      = 2     # сколько петель-шпилек по кругу
-LOOP_W       = 30    # расстояние между двумя стойками одной петли (по осям)
-STRAIGHT_H   = 95    # высота прямой части над основанием
-LEAN_H       = 22    # высота отогнутого участка
-LEAN_OUT     = 10    # насколько верх петли уходит наружу
-BASE_D       = 160
-BASE_H       = 16
-FLOOR_T      = 12     # толщина дна тарелки
-RIM_W        = 6     # ширина бортика
-N_RIBS       = 110    # рифление по краю
+CUP_RIM_D   = 82     # проход между внутренними стойками (ободок стакана + зазор); 250 мл ≈ 80 мм
+WIRE_D      = 5.5    # толщина «проволоки»
+N_LOOPS     = 2      # петли друг напротив друга, как на фото
+LOOP_H      = 155    # высота петли над дном тарелки (до верха скругления)
+GAP_BOTTOM  = 7      # расстояние между стойками петли внизу (по осям)
+GAP_TOP     = 20     # расстояние между стойками петли вверху (по осям)
+TOP_LEAN    = 9      # отгиб верхушки петли наружу (как на фото)
+LEAN_H      = 30     # на какой высоте от верха начинается отгиб
+BASE_D      = 142    # по фото ≈ 1.6 × расстояние между петлями
+BASE_H      = 15
+FLOOR_T     = 11     # толщина сплошного дна (вес/устойчивость)
+RIM_W       = 6      # ширина бортика
+N_RIBS      = 100    # вертикальное рифление по краю
 
 r = WIRE_D / 2
-R = CUP_RIM_D / 2 + r          # радиус, на котором стоят стойки
+R_IN = CUP_RIM_D / 2 + r      # радиус внутренней стойки
 
 
 def capsule(p1, p2, rad=r):
@@ -35,56 +39,46 @@ def polyline(pts, rad=r):
 
 
 # ---------- основание-тарелка ----------
-body = Manifold.cylinder(BASE_H, BASE_D / 2 - 1.6)
-rib = Manifold.cylinder(BASE_H - 1.2, 1.9).translate((BASE_D / 2 - 1.9, 0, 0.6))
+body = Manifold.cylinder(BASE_H, BASE_D / 2 - 1.8)
+rib = Manifold.cylinder(BASE_H - 1.0, 2.1).translate((BASE_D / 2 - 2.1, 0, 0.5))
 ribs = Manifold.batch_boolean(
     [rib.rotate((0, 0, i * 360 / N_RIBS)) for i in range(N_RIBS)], OpType.Add)
 inner_r = BASE_D / 2 - RIM_W
 pocket = Manifold.cylinder(BASE_H, inner_r).translate((0, 0, FLOOR_T))
 base = (body + ribs) - pocket
-# лёгкая фаска-кольцо по внутреннему краю бортика (как на фото)
-base = base + (Manifold.cylinder(1.2, inner_r) - Manifold.cylinder(1.2, inner_r - 1.5)) \
-    .translate((0, 0, FLOOR_T))
 
 parts = [base]
 
-# ---------- петли-шпильки ----------
-half_ang = math.asin((LOOP_W / 2) / R)
+# ---------- петли-«ушки» ----------
 z0 = FLOOR_T - 0.5
-z1 = BASE_H + STRAIGHT_H
-z2 = z1 + LEAN_H
+z_arc = FLOOR_T + LOOP_H - GAP_TOP / 2 - r      # центр верхнего скругления
 for k in range(N_LOOPS):
     a = 2 * math.pi * k / N_LOOPS
-    radial = np.array([math.cos(a), math.sin(a), 0.0])
-    tang = np.array([-math.sin(a), math.cos(a), 0.0])
-    tops = []
-    for sgn in (-1, 1):
-        ang = a + sgn * half_ang
-        foot = np.array([R * math.cos(ang), R * math.sin(ang), 0.0])
-        p0 = foot + [0, 0, z0]
-        p1 = foot + [0, 0, z1]
-        p2 = foot + radial * LEAN_OUT + [0, 0, z2]
-        mid = p1 + np.array([0, 0, LEAN_H * 0.35]) + radial * LEAN_OUT * 0.12
-        parts += polyline([p0, p1, mid, p2])
-        # утолщение-галтель в основании стойки
-        parts.append(Manifold.cylinder(4, r + 2.2, r).translate(tuple(foot + [0, 0, FLOOR_T])))
-        tops.append(p2)
-    # верхняя дуга, замыкающая петлю (полуокружность, наклонена наружу)
-    c = (tops[0] + tops[1]) / 2
-    up = np.array([0, 0, 1.0]) * 0.85 + radial * 0.5
-    up /= np.linalg.norm(up)
-    half = np.linalg.norm(tops[1] - tops[0]) / 2
-    e = (tops[1] - tops[0]) / (2 * half)
-    arc = [c + half * (-math.cos(t) * e + math.sin(t) * up)
-           for t in np.linspace(0, math.pi, 17)]
-    parts += polyline(arc)
+    rad = np.array([math.cos(a), math.sin(a), 0.0])
+    P = lambda rr, z: rad * rr + np.array([0, 0, z])
+
+    zb = z_arc - LEAN_H
+    k_out = GAP_BOTTOM + (GAP_TOP - GAP_BOTTOM) * (zb - z0) / (z_arc - z0)
+    inner = [P(R_IN, z0), P(R_IN, zb), P(R_IN + TOP_LEAN, z_arc)]
+    outer = [P(R_IN + TOP_LEAN + GAP_TOP, z_arc), P(R_IN + k_out, zb), P(R_IN + GAP_BOTTOM, z0)]
+    c = P(R_IN + TOP_LEAN + GAP_TOP / 2, z_arc)
+    arc = [c + (GAP_TOP / 2) * (-math.cos(t) * rad + np.array([0, 0, math.sin(t)]))
+           for t in np.linspace(0, math.pi, 19)]
+    parts += polyline(inner + arc[1:-1] + outer)
+
+    # галтели у основания стоек
+    for rr in (R_IN, R_IN + GAP_BOTTOM):
+        foot = P(rr, 0)
+        parts.append(Manifold.cylinder(3.5, r + 2.0, r)
+                     .translate((foot[0], foot[1], FLOOR_T)))
 
 model = Manifold.batch_boolean(parts, OpType.Add)
 model = model ^ Manifold.cube((400, 400, 400), center=True).translate((0, 0, 200))
 
 mesh = model.to_mesh()
 tm = trimesh.Trimesh(vertices=np.asarray(mesh.vert_properties)[:, :3],
-                     faces=np.asarray(mesh.tri_verts))
+                     faces=np.asarray(mesh.tri_verts), process=True)
+tm.merge_vertices()
 out = __file__.replace('.py', '.stl')
 tm.export(out)
 print('watertight:', tm.is_watertight, 'size mm:', tm.extents.round(1),
