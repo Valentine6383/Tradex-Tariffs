@@ -15,11 +15,11 @@ CUP_RIM_D   = 82     # проход между внутренними стойк
 WIRE_D      = 5.5    # толщина «проволоки»
 N_LOOPS     = 2      # петли друг напротив друга, как на фото
 LOOP_H      = 155    # высота петли над дном тарелки (до верха скругления)
-GAP_BOTTOM  = 7      # расстояние между стойками петли внизу (по осям)
-GAP_TOP     = 20     # расстояние между стойками петли вверху (по осям)
+GAP_BOTTOM  = 20     # расстояние между стойками петли внизу (по осям)
+GAP_TOP     = 26     # расстояние между стойками петли вверху (по осям)
 TOP_LEAN    = 9      # отгиб верхушки петли наружу (как на фото)
 LEAN_H      = 30     # на какой высоте от верха начинается отгиб
-BASE_D      = 142    # по фото ≈ 1.6 × расстояние между петлями
+BASE_D      = 160    # шире, чтобы раздвинутые ножки влезли и было устойчиво
 BASE_H      = 15
 FLOOR_T     = 11     # толщина сплошного дна (вес/устойчивость)
 RIM_W       = 6      # ширина бортика
@@ -30,7 +30,7 @@ R_IN = CUP_RIM_D / 2 + r      # радиус внутренней стойки
 
 
 def capsule(p1, p2, rad=r):
-    s = lambda p: Manifold.sphere(rad).translate(tuple(map(float, p)))
+    s = lambda p: Manifold.sphere(rad).rotate((17, 29, 0)).translate(tuple(map(float, p)))
     return Manifold.batch_hull([s(p1), s(p2)])
 
 
@@ -78,7 +78,12 @@ model = model ^ Manifold.cube((400, 400, 400), center=True).translate((0, 0, 200
 mesh = model.to_mesh()
 tm = trimesh.Trimesh(vertices=np.asarray(mesh.vert_properties)[:, :3],
                      faces=np.asarray(mesh.tri_verts), process=True)
-tm.merge_vertices()
+tm.merge_vertices(digits_vertex=4)
+tm.update_faces(tm.nondegenerate_faces())
+tm.update_faces(tm.unique_faces())
+tm.remove_unreferenced_vertices()
+tm.fill_holes()
+trimesh.repair.fix_normals(tm)
 out = __file__.replace('.py', '.stl')
 tm.export(out)
 print('watertight:', tm.is_watertight, 'size mm:', tm.extents.round(1),
