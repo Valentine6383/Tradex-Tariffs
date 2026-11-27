@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' http: data:; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<title>K2 Widget</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="card" class="card">
+  <!-- Мини-плеер -->
+  <div class="bar drag">
+    <div class="thumb" id="thumb"><img id="thumbImg" alt=""><div class="ring"><svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="17"/><circle id="ringFg" class="fg" cx="20" cy="20" r="17"/></svg><span id="pct">—</span></div></div>
+    <div class="info">
+      <div class="title" id="title">Ожидание принтера…</div>
+      <div class="sub" id="sub">—</div>
+      <div class="prog"><div id="progFill"></div></div>
+    </div>
+    <div class="btns nodrag">
+      <button id="btnPause" class="round" title="Пауза / продолжить">❚❚</button>
+      <button id="btnExpand" class="ghost" title="Развернуть">▴</button>
+      <button id="btnHide" class="ghost" title="Спрятать в трей">✕</button>
+    </div>
+  </div>
+
+  <!-- Развёрнутая панель -->
+  <div class="panel nodrag" id="panel">
+    <div class="tabs">
+      <button data-tab="main" class="tab on">Печать</button>
+      <button data-tab="objects" class="tab">Детали</button>
+      <button data-tab="settings" class="tab">Настройки</button>
+    </div>
+
+    <section id="tab-main" class="tabbody">
+      <div class="stats">
+        <div class="stat"><b id="sNozzle">—</b><span>Сопло</span></div>
+        <div class="stat"><b id="sBed">—</b><span>Стол</span></div>
+        <div class="stat"><b id="sBox">—</b><span>Камера</span></div>
+        <div class="stat"><b id="sSpeed">—</b><span>Скорость</span></div>
+        <div class="stat"><b id="sFlow">—</b><span>Поток</span></div>
+        <div class="stat"><b id="sLayer">—</b><span>Слой</span></div>
+        <div class="stat"><b id="sElapsed">—</b><span>Прошло</span></div>
+        <div class="stat"><b id="sLeft">—</b><span>Осталось</span></div>
+        <div class="stat"><b id="sFil">—</b><span>Пластик</span></div>
+      </div>
+
+      <div class="ctl">
+        <div class="ctlhead"><span>Скорость печати</span><b id="vSpeed">100%</b></div>
+        <input type="range" id="rSpeed" min="50" max="200" step="5" value="100">
+        <div class="presets">
+          <button data-speed="50">Тихий 50%</button>
+          <button data-speed="100">Стандарт 100%</button>
+          <button data-speed="130">Спорт 130%</button>
+          <button data-speed="160">Безумный 160%</button>
+        </div>
+      </div>
+
+      <div id="fans"></div>
+
+      <div class="row">
+        <button id="btnPause2" class="wide">Пауза</button>
+        <button id="btnStop" class="wide danger">Остановить</button>
+      </div>
+    </section>
+
+    <section id="tab-objects" class="tabbody hidden">
+      <p class="hint">Отметь деталь, которую не надо допечатывать — принтер её пропустит, остальное доделает.</p>
+      <div id="objList" class="objlist"></div>
+      <div id="objEmpty" class="hint">
+        Принтер не прислал список деталей. Открой тот же .gcode, что отправил на печать
+        (в Creality Print: «Экспорт G-code»), или перетащи файл сюда.
+      </div>
+      <button id="btnGcode" class="wide">Открыть .gcode…</button>
+    </section>
+
+    <section id="tab-settings" class="tabbody hidden">
+      <label class="lbl">IP-адрес принтера</label>
+      <div class="row">
+        <input id="ip" placeholder="например 192.168.1.50">
+        <button id="btnSaveIp">OK</button>
+      </div>
+      <button id="btnScan" class="wide">🔍 Найти принтер в сети</button>
+      <div id="scanRes" class="hint"></div>
+      <p class="hint">IP можно глянуть на экране принтера: Настройки → Сеть.</p>
+      <label class="chk"><input type="checkbox" id="cAuto"> Запускать вместе с Windows</label>
+      <label class="chk"><input type="checkbox" id="cAlways"> Показывать виджет и без печати</label>
+      <p class="hint" id="conn">—</p>
+    </section>
+  </div>
+
+  <div id="confirm" class="confirm hidden">
+    <div>
+      <p id="confirmText">Точно?</p>
+      <div class="row"><button id="cNo" class="wide">Отмена</button><button id="cYes" class="wide danger">Да</button></div>
+    </div>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "k2-widget",
+  "version": "1.0.0",
+  "description": "Мини-плеер для принтера Creality K2",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "mock": "node tools/mock-printer.js",
+    "dist": "electron-packager . \"K2 Widget\" --platform=win32 --arch=x64 --out=dist --overwrite --asar --ignore=^/dist --ignore=^/tools --app-copyright=\"\" --win32metadata.ProductName=\"K2 Widget\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@electron/packager": "^18.3.6",
+    "electron": "^33.2.1"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "productName": "K2 Widget"
+}

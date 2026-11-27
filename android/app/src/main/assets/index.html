@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>K2 Монитор</title>
+<style>
+  :root { --bg:#17181c; --card:#222329; --card2:#2b2d34; --line:#33353d; --fg:#eef0f3; --mut:#9a9fab; --acc:#22c55e; --warn:#f59e0b; --bad:#ef4444; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.35 Roboto,system-ui,sans-serif; user-select:none; }
+  body { padding:14px; min-height:100vh; }
+  header { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  header h1 { font-size:18px; margin:0; flex:1; }
+  .dot { width:10px; height:10px; border-radius:50%; background:var(--bad); }
+  .dot.on { background:var(--acc); box-shadow:0 0 8px var(--acc); }
+  .conn { color:var(--mut); font-size:13px; }
+  button { font:inherit; color:var(--fg); background:var(--card2); border:0; border-radius:12px; padding:10px 14px; }
+  button:active { filter:brightness(1.3); }
+  button:disabled { opacity:.35; }
+  .grid { display:grid; grid-template-columns: 1.35fr 1fr; gap:12px; }
+  @media (orientation: portrait), (max-width: 760px) { .grid { grid-template-columns:1fr; } }
+  .card { background:var(--card); border-radius:16px; padding:14px; }
+  .card h2 { font-size:14px; font-weight:500; color:var(--mut); margin:0 0 12px; display:flex; justify-content:space-between; }
+  .col { display:flex; flex-direction:column; gap:12px; }
+
+  .job { display:flex; gap:16px; }
+  .thumb { width:170px; height:170px; border-radius:14px; background:#1a1b20; flex:none; display:grid; place-items:center; overflow:hidden; color:var(--mut); font-size:40px; }
+  .thumb img { width:100%; height:100%; object-fit:contain; display:none; }
+  .jobinfo { flex:1; min-width:0; display:flex; flex-direction:column; }
+  .fname { font-size:18px; font-weight:600; word-break:break-all; }
+  .meta { display:flex; gap:14px; flex-wrap:wrap; color:var(--mut); margin-top:6px; font-size:14px; }
+  .status { margin-top:auto; display:flex; justify-content:space-between; align-items:flex-end; gap:10px; padding-top:10px; }
+  .st { color:#60a5fa; font-weight:500; }
+  .st.paused { color:var(--warn); } .st.done { color:var(--acc); } .st.err { color:var(--bad); }
+  .eta { font-weight:600; text-align:right; }
+  .bar { height:10px; background:var(--card2); border-radius:6px; overflow:hidden; margin-top:8px; }
+  .bar div { height:100%; width:0; background:var(--acc); border-radius:6px; transition:width .6s; }
+  .under { display:flex; justify-content:space-between; margin-top:6px; font-size:14px; }
+  .under .pct { color:var(--acc); font-weight:700; font-size:22px; }
+  .btns { display:flex; gap:10px; margin-top:14px; }
+  .btns button { flex:1; padding:14px; font-size:16px; font-weight:500; }
+  .b-pause { background:rgba(34,197,94,.18); color:#86efac; }
+  .b-pause.paused { background:rgba(245,158,11,.2); color:#fcd34d; }
+  .b-stop { background:rgba(239,68,68,.18); color:#fca5a5; }
+
+  .tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .tile { background:var(--card2); border-radius:12px; padding:10px 12px; }
+  .tile small { color:var(--mut); font-size:12px; display:block; }
+  .tile b { font-size:20px; font-variant-numeric:tabular-nums; }
+  .tile i { font-style:normal; color:var(--mut); font-size:13px; }
+
+  .temp { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .tset { background:var(--card2); border-radius:12px; padding:10px 12px; }
+  .tset small { color:var(--mut); font-size:12px; }
+  .tset .cur { font-size:22px; font-weight:600; margin:2px 0 6px; }
+  .tset .row { display:flex; gap:6px; }
+  .tset input { width:100%; min-width:0; font:inherit; color:var(--fg); background:#1a1b20; border:1px solid var(--line); border-radius:10px; padding:8px; user-select:text; }
+  .tset button { padding:8px 12px; }
+
+  .line { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .switch { width:52px; height:30px; border-radius:15px; background:var(--card2); position:relative; flex:none; padding:0; }
+  .switch::after { content:""; position:absolute; top:3px; left:3px; width:24px; height:24px; border-radius:50%; background:#cfd3da; transition:left .2s; }
+  .switch.on { background:var(--acc); } .switch.on::after { left:25px; background:#fff; }
+  input[type=range] { width:100%; accent-color:var(--acc); height:28px; }
+  .val { font-weight:600; font-variant-numeric:tabular-nums; }
+  .presets { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:6px; }
+  .presets button { padding:10px 4px; font-size:14px; }
+  .presets button.on { background:rgba(34,197,94,.2); color:#86efac; }
+  .sub { color:var(--mut); font-size:13px; }
+  .objs { display:flex; flex-direction:column; gap:6px; }
+  .obj { display:flex; justify-content:space-between; align-items:center; background:var(--card2); border-radius:10px; padding:8px 10px; }
+  .obj.ex span { text-decoration:line-through; color:var(--mut); }
+
+  .modal { position:fixed; inset:0; background:rgba(0,0,0,.65); display:none; place-items:center; padding:20px; z-index:9; }
+  .modal.show { display:grid; }
+  .modal > div { background:var(--card); border-radius:18px; padding:18px; width:100%; max-width:440px; display:flex; flex-direction:column; gap:12px; }
+  .modal input { font:inherit; color:var(--fg); background:#1a1b20; border:1px solid var(--line); border-radius:10px; padding:12px; user-select:text; }
+  .modal .row { display:flex; gap:8px; } .modal .row > * { flex:1; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div class="dot" id="dot"></div>
+  <h1>K2 Монитор</h1>
+  <span class="conn" id="conn">—</span>
+  <button id="bSettings">⚙</button>
+</header>
+
+<div class="grid">
+  <div class="col">
+    <div class="card">
+      <h2><span>Текущая печать</span><span id="clock"></span></h2>
+      <div class="job">
+        <div class="thumb"><img id="img" alt=""><span id="noimg">⎔</span></div>
+        <div class="jobinfo">
+          <div class="fname" id="fname">Нет печати</div>
+          <div class="meta"><span id="mElapsed">⏱ —</span><span id="mFil">⚖ —</span><span id="mLayer">☰ —</span></div>
+          <div class="status">
+            <span class="st" id="st">—</span>
+            <span class="eta" id="eta"></span>
+          </div>
+          <div class="bar"><div id="bar"></div></div>
+          <div class="under"><span class="pct" id="pct">0%</span><span id="left">осталось —</span></div>
+        </div>
+      </div>
+      <div class="btns">
+        <button class="b-pause" id="bPause">⏸ Пауза</button>
+        <button class="b-stop" id="bStop">⏹ Стоп</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span>Сейчас</span></h2>
+      <div class="tiles">
+        <div class="tile"><small>Скорость</small><b id="tSpeed">—</b> <i>мм/с</i></div>
+        <div class="tile"><small>Поток</small><b id="tFlow">—</b> <i>мм³/с</i></div>
+        <div class="tile"><small>Камера</small><b id="tBox">—</b></div>
+      </div>
+    </div>
+
+    <div class="card hidden" id="objCard">
+      <h2><span>Детали на столе</span></h2>
+      <div class="objs" id="objs"></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="card">
+      <h2><span>Температура</span></h2>
+      <div class="temp">
+        <div class="tset"><small>Сопло</small><div class="cur" id="cNoz">—</div>
+          <div class="row"><input id="iNoz" inputmode="numeric" placeholder="цель °C"><button data-temp="noz">OK</button></div></div>
+        <div class="tset"><small>Стол</small><div class="cur" id="cBed">—</div>
+          <div class="row"><input id="iBed" inputmode="numeric" placeholder="цель °C"><button data-temp="bed">OK</button></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="line"><span>💡 Подсветка</span><button class="switch" id="swLed"></button></div>
+    </div>
+
+    <div class="card">
+      <div class="line"><span>🌀 Обдув модели</span><span class="val" id="vFan">—</span></div>
+      <input type="range" id="rFan" min="0" max="100" step="5" value="0">
+      <div class="line"><span class="sub">Боковой вентилятор</span><span class="val" id="vAux">—</span></div>
+      <input type="range" id="rAux" min="0" max="100" step="5" value="0">
+    </div>
+
+    <div class="card">
+      <div class="line"><span>Скорость печати</span><span class="val" id="vSpd">—</span></div>
+      <input type="range" id="rSpd" min="50" max="160" step="5" value="100">
+      <div class="presets">
+        <button data-spd="50">Тихий 50%</button>
+        <button data-spd="100">Стандарт 100%</button>
+        <button data-spd="125">Быстрый 125%</button>
+        <button data-spd="150">Макс 150%</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="mSettings"><div>
+  <b>Принтер</b>
+  <input id="ip" placeholder="IP принтера, например 192.168.1.50">
+  <div class="row"><button id="bScan">🔍 Найти в сети</button><button id="bSave" style="background:var(--acc);color:#05230f">Сохранить</button></div>
+  <span class="sub" id="scan">IP есть на экране принтера: Настройки → Сеть.</span>
+  <div class="line"><span>Не гасить экран (планшет как табло)</span><button class="switch" id="swKeep"></button></div>
+  <button id="bClose">Закрыть</button>
+</div></div>
+
+<div class="modal" id="mConfirm"><div>
+  <span id="cText">Точно?</span>
+  <div class="row"><button id="cNo">Отмена</button><button id="cYes" style="background:var(--bad)">Да</button></div>
+</div></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const A = window.Android || {
+  // запасной вариант для проверки в обычном браузере
+  getIp: () => localStorage.getItem('ip') || '', setIp: (v) => localStorage.setItem('ip', v),
+  getKeepScreen: () => false, setKeepScreen: () => {}, discover: () => setTimeout(() => window.onDiscover([]), 500),
+};
+const STATE = { 0: 'Простой', 1: 'Печать', 2: 'Готово ✓', 3: 'Ошибка', 4: 'Остановлено', 5: 'Пауза' };
+let ip = A.getIp(), ws = null, connected = false, S = {}, lastMsg = 0;
+const tick = {}, touched = {}, excluded = new Set();
+
+const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
+const fmt = (s) => { if (s == null || s < 0) return '—'; s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return h ? `${h} ч ${m} мин` : `${m} мин`; };
+const hhmm = (d) => d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+const grams = (mm) => mm * Math.PI * 0.875 * 0.875 * 1.24 / 1000;
+
+function connect() {
+  if (ws) { ws.onclose = null; try { ws.close(); } catch (_) {} ws = null; }
+  connected = false; render();
+  if (!ip) return;
+  try { ws = new WebSocket(`ws://${ip}:9999`); } catch (_) { return; }
+  ws.onopen = () => { connected = true; lastMsg = Date.now(); send({ method: 'get', params: { ReqPrinterPara: 1 } }); render(); };
+  ws.onmessage = (e) => {
+    lastMsg = Date.now();
+    let o; try { o = JSON.parse(e.data); } catch (_) { return; }
+    if (!o || typeof o !== 'object') return;
+    if (o.ModeCode === 'heart_beat') { send({ ModeCode: 'heart_beat', msg: 'ok' }); return; }
+    if (o.printFileName && o.printFileName !== S.printFileName) excluded.clear();
+    Object.assign(S, o); render();
+  };
+  ws.onclose = () => { ws = null; connected = false; render(); setTimeout(() => { if (!ws) connect(); }, 4000); };
+}
+setInterval(() => {
+  send({ ModeCode: 'heart_beat', msg: String(Date.now()) });
+  if (connected && Date.now() - lastMsg > 30000) connect();
+}, 10000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !connected) connect(); });
+
+function send(o) { if (ws && ws.readyState === 1) { ws.send(JSON.stringify(o)); return true; } return false; }
+const set = (p) => send({ method: 'set', params: p });
+const gcode = (c) => set({ gcodeCmd: c });
+
+function ticking(key, val, running) {
+  const v = num(val); if (v == null) return 0;
+  if (!tick[key] || tick[key].v !== v) tick[key] = { v, at: Date.now() };
+  return running ? (Date.now() - tick[key].at) / 1000 : 0;
+}
+
+function render() {
+  const st = Number(S.state), printing = st === 1, paused = st === 5, active = printing || paused;
+  $('dot').classList.toggle('on', connected);
+  $('conn').textContent = !ip ? 'принтер не указан' : connected ? ip : `нет связи с ${ip}…`;
+  $('clock').textContent = hhmm(new Date());
+
+  const name = String(S.printFileName || '').split(/[\\/]/).pop();
+  $('fname').textContent = connected && name ? name : (connected ? 'Нет печати' : '—');
+  const pct = num(S.printProgress) ?? 0;
+  const elapsed = num(S.printJobTime) != null ? num(S.printJobTime) + ticking('job', S.printJobTime, printing) : null;
+  const left = num(S.printLeftTime) != null ? Math.max(0, num(S.printLeftTime) - ticking('left', S.printLeftTime, printing)) : null;
+  $('mElapsed').textContent = `⏱ ${fmt(elapsed)}`;
+  const used = num(S.usedMaterialLength);
+  $('mFil').textContent = used != null ? `⚖ ${grams(used).toFixed(1)} г${pct > 3 ? ` из ~${(grams(used) / (pct / 100)).toFixed(0)} г` : ''}` : '⚖ —';
+  const layer = num(S.layer), total = num(S.TotalLayer ?? S.totalLayer);
+  $('mLayer').textContent = layer != null ? `☰ слой ${layer}${total ? ' / ' + total : ''}` : '☰ —';
+
+  const stEl = $('st');
+  stEl.textContent = connected ? (STATE[st] || '—') : 'Нет связи';
+  stEl.className = 'st' + (paused ? ' paused' : st === 2 ? ' done' : (st === 3 || st === 4) ? ' err' : '');
+  $('eta').textContent = active && left != null ? `Завершится в ${hhmm(new Date(Date.now() + left * 1000))}` : '';
+  $('bar').style.width = `${pct}%`;
+  $('pct').textContent = `${Math.round(pct)}%`;
+  $('left').textContent = active ? `осталось ${fmt(left)}` : '';
+
+  $('bPause').disabled = $('bStop').disabled = !connected || !active;
+  $('bPause').textContent = paused ? '▶ Продолжить' : '⏸ Пауза';
+  $('bPause').classList.toggle('paused', paused);
+
+  const sp = num(S.realTimeSpeed), fl = num(S.realTimeFlow), bx = num(S.boxTemp);
+  $('tSpeed').textContent = sp != null ? Math.round(sp) : '—';
+  $('tFlow').textContent = fl != null ? fl.toFixed(1) : '—';
+  $('tBox').textContent = bx != null ? `${Math.round(bx)}°` : '—';
+
+  const t = (c, g) => { c = num(c); g = num(g); return c == null ? '—' : `${Math.round(c)}°${g ? ` / ${Math.round(g)}°` : ''}`; };
+  $('cNoz').textContent = t(S.nozzleTemp, S.targetNozzleTemp);
+  $('cBed').textContent = t(S.bedTemp0 ?? S.bedTemp, S.targetBedTemp0 ?? S.targetBedTemp);
+
+  $('swLed').classList.toggle('on', Number(S.lightSw) === 1);
+  slider('rFan', 'vFan', S.modelFanPct, 'fan');
+  slider('rAux', 'vAux', S.auxiliaryFanPct, 'aux');
+  slider('rSpd', 'vSpd', S.curFeedratePct, 'spd');
+  document.querySelectorAll('[data-spd]').forEach((b) => b.classList.toggle('on', +b.dataset.spd === +$('rSpd').value));
+  document.querySelectorAll('input[type=range], .switch:not(#swKeep), [data-spd], [data-temp]').forEach((e) => (e.disabled = !connected));
+
+  renderObjects();
+  const img = $('img'), key = connected && name ? `${ip}|${S.printFileName}` : '';
+  if (img.dataset.key !== key) {
+    img.dataset.key = key;
+    if (key) img.src = `http://${ip}/downloads/original/current_print_image.png?t=${Date.now()}`;
+    else { img.style.display = 'none'; $('noimg').style.display = ''; }
+  }
+}
+function slider(rid, vid, val, key) {
+  const v = num(val);
+  if (v != null && Date.now() - (touched[key] || 0) > 5000) { $(rid).value = v; $(vid).textContent = `${Math.round(v)}%`; }
+  else if (v == null && !touched[key]) $(vid).textContent = '—';
+}
+let objSig = '';
+function renderObjects() {
+  let names = [];
+  for (const [k, v] of Object.entries(S)) if (/object/i.test(k) && Array.isArray(v))
+    v.forEach((o) => { const n = typeof o === 'string' ? o : o && (o.name || o.objName); if (n) names.push(String(n)); });
+  names = [...new Set(names)];
+  const sig = names.join('|') + [...excluded].join('|') + connected;
+  if (sig === objSig) return; objSig = sig;
+  $('objCard').classList.toggle('hidden', !names.length);
+  $('objs').innerHTML = '';
+  names.forEach((n) => {
+    const row = document.createElement('div'), ex = excluded.has(n);
+    row.className = 'obj' + (ex ? ' ex' : '');
+    const sp = document.createElement('span'); sp.textContent = n;
+    const b = document.createElement('button'); b.textContent = ex ? 'Пропущена' : 'Не печатать'; b.disabled = ex || !connected;
+    b.onclick = () => ask(`Пропустить «${n}»? Вернуть уже не получится.`, () => { if (gcode(`EXCLUDE_OBJECT NAME=${n}`)) { excluded.add(n); render(); } });
+    row.append(sp, b); $('objs').appendChild(row);
+  });
+}
+
+function ask(text, yes) {
+  $('cText').textContent = text; $('mConfirm').classList.add('show');
+  $('cYes').onclick = () => { $('mConfirm').classList.remove('show'); yes(); };
+  $('cNo').onclick = () => $('mConfirm').classList.remove('show');
+}
+
+$('bPause').onclick = () => set({ pause: Number(S.state) === 5 ? 0 : 1 });
+$('bStop').onclick = () => ask('Остановить печать совсем? Это не пауза.', () => set({ stop: 1 }));
+$('swLed').onclick = () => { const on = Number(S.lightSw) === 1 ? 0 : 1; set({ lightSw: on }); S.lightSw = on; render(); };
+document.querySelectorAll('[data-temp]').forEach((b) => (b.onclick = () => {
+  const noz = b.dataset.temp === 'noz', inp = $(noz ? 'iNoz' : 'iBed'), v = Math.round(num(inp.value));
+  if (v == null || v < 0 || v > (noz ? 350 : 120)) { inp.value = ''; return; }
+  gcode(noz ? `M104 S${v}` : `M140 S${v}`); inp.value = ''; inp.blur();
+}));
+function bindRange(rid, vid, key, sendFn) {
+  $(rid).addEventListener('input', () => { touched[key] = Date.now(); $(vid).textContent = `${$(rid).value}%`; render(); });
+  $(rid).addEventListener('change', () => { touched[key] = Date.now(); sendFn(+$(rid).value); });
+}
+const fan = (p, v) => gcode(`M106 P${p} S${Math.round(v * 2.55)}`);
+const speed = (v) => { set({ setFeedratePct: v }); gcode(`M220 S${v}`); };
+bindRange('rFan', 'vFan', 'fan', (v) => fan(0, v));
+bindRange('rAux', 'vAux', 'aux', (v) => fan(2, v));
+bindRange('rSpd', 'vSpd', 'spd', speed);
+document.querySelectorAll('[data-spd]').forEach((b) => (b.onclick = () => {
+  touched.spd = Date.now(); $('rSpd').value = b.dataset.spd; $('vSpd').textContent = `${b.dataset.spd}%`; speed(+b.dataset.spd); render();
+}));
+
+function openSettings() {
+  $('ip').value = ip; $('swKeep').classList.toggle('on', !!A.getKeepScreen()); $('mSettings').classList.add('show');
+}
+$('bSettings').onclick = openSettings;
+$('bClose').onclick = () => $('mSettings').classList.remove('show');
+$('bSave').onclick = () => { ip = $('ip').value.trim(); A.setIp(ip); $('mSettings').classList.remove('show'); connect(); };
+$('swKeep').onclick = () => { const on = !$('swKeep').classList.contains('on'); A.setKeepScreen(on); $('swKeep').classList.toggle('on', on); };
+$('bScan').onclick = () => { $('bScan').disabled = true; $('scan').textContent = 'Ищу принтер… секунд 10'; A.discover(); };
+window.onDiscover = (list) => {
+  $('bScan').disabled = false;
+  if (!list.length) { $('scan').textContent = 'Не нашёл. Планшет и принтер должны быть в одной Wi-Fi сети. Или впиши IP руками.'; return; }
+  $('ip').value = list[0]; $('scan').textContent = `Нашёл: ${list.join(', ')}. Жми «Сохранить».`;
+};
+$('img').onload = () => { $('img').style.display = 'block'; $('noimg').style.display = 'none'; };
+$('img').onerror = () => { $('img').style.display = 'none'; $('noimg').style.display = ''; };
+
+setInterval(render, 1000);
+if (!ip) openSettings(); else connect();
+render();
+</script>
+</body>
+</html>
